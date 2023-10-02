@@ -14,6 +14,8 @@ namespace NitroPatcher
   {
     public MainWindow()
     {
+      string[] args = Environment.GetCommandLineArgs();
+      if (args.Length == 4) { PatchHelper.PatchIt(args[1], args[2], args[3]); Environment.Exit(0); }
       InitializeComponent();
     }
 

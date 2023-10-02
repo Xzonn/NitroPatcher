@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Windows;
 using NitroHelper;
+using PleOps.XdeltaSharp.Decoder;
 
 namespace NitroPatcher
 {
@@ -47,7 +48,9 @@ namespace NitroPatcher
         archiveStream.Close();
 
         var ndsFile = new NDSFile(originalPath);
-        ReplaceFile(ndsFile.root, tempPath);
+        var ndsFileStream = File.OpenRead(originalPath);
+        ReplaceFile(ndsFile.root, tempPath, new BinaryReader(ndsFileStream));
+        ndsFileStream.Close();
         ndsFile.SaveAs(Path.Combine(tempPath, "temp.nds"));
         File.Copy(Path.Combine(tempPath, "temp.nds"), outputPath, true);
       }
@@ -73,13 +76,26 @@ namespace NitroPatcher
       return exists;
     }
 
-    static void ReplaceFile(sFolder sFolder, string inputFolder, string path = "")
+    static void ReplaceFile(sFolder sFolder, string inputFolder, BinaryReader ndsFileReader, string path = "")
     {
       if (sFolder.files != null)
       {
         foreach (var file in sFolder.files)
         {
+          string xdeltaPath = Path.Combine(new string[] { inputFolder, "xdelta", path, file.name });
           string replacedPath = Path.Combine(new string[] { inputFolder, path, file.name });
+          if (File.Exists(xdeltaPath) && string.IsNullOrEmpty(file.path)) {
+            ndsFileReader.BaseStream.Position = file.offset;
+            var inputStream = new MemoryStream(ndsFileReader.ReadBytes((int)file.size));
+            var patchStream = File.OpenRead(xdeltaPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(replacedPath));
+            var outputStream = File.Create(replacedPath);
+            var decoder = new Decoder(inputStream, patchStream, outputStream);
+            decoder.Run();
+            patchStream.Close();
+            outputStream.Close();
+            decoder.Dispose();
+          }
           if (!File.Exists(replacedPath)) { continue; }
           file.size = (uint)new FileInfo(replacedPath).Length;
           file.path = replacedPath;
@@ -90,7 +106,7 @@ namespace NitroPatcher
       {
         foreach (var folder in sFolder.folders)
         {
-          ReplaceFile(folder, inputFolder, Path.Combine(path, folder.name));
+          ReplaceFile(folder, inputFolder, ndsFileReader, Path.Combine(path, folder.name));
         }
       }
     }

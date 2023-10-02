@@ -1,6 +1,8 @@
 ﻿using Microsoft.Win32;
+using System;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 
 namespace NitroPatcher
@@ -19,7 +21,7 @@ namespace NitroPatcher
     {
       OpenFileDialog ofd = new OpenFileDialog
       {
-        Title = "原始ROM",
+        Title = "原始 ROM",
         Filter = "Nintendo DS ROM文件|*.nds|所有文件|*.*"
       };
       ofd.ShowDialog();
@@ -41,7 +43,7 @@ namespace NitroPatcher
     {
       SaveFileDialog sfd = new SaveFileDialog
       {
-        Title = "输出ROM",
+        Title = "输出 ROM",
         Filter = "Nintendo DS ROM文件|*.nds"
       };
       sfd.ShowDialog();
@@ -66,6 +68,32 @@ namespace NitroPatcher
         });
       });
       thread.Start();
+    }
+
+    private void TextBox_DragDrop(object sender, DragEventArgs e)
+    {
+      string filePath = ((string[])e.Data.GetData(DataFormats.FileDrop))[0];
+      if (PatchHelper.CheckIfFileExists(filePath))
+      {
+        ((TextBox)sender).Text = filePath;
+      }
+    }
+
+    private void TextBox_DragEnter(object sender, DragEventArgs e)
+    {
+      if (e.Data.GetDataPresent(DataFormats.FileDrop) && ((Array)e.Data.GetData(DataFormats.FileDrop)).Length == 1)
+      {
+        e.Effects = DragDropEffects.Link;
+      }
+      else
+      {
+        e.Effects = DragDropEffects.None;
+      }
+    }
+
+    private void TextBox_PreviewDragOver(object sender, DragEventArgs e)
+    {
+      e.Handled = true;
     }
   }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,35 +22,44 @@ namespace NitroPatcher
 
     private void Button1_Click(object sender, RoutedEventArgs e)
     {
+      var originalPath = "";
+      try { originalPath = Path.GetDirectoryName(textBox1.Text); } catch { }
       OpenFileDialog ofd = new OpenFileDialog
       {
         Title = "原始 ROM",
-        Filter = "Nintendo DS ROM文件|*.nds|所有文件|*.*"
+        Filter = "Nintendo DS ROM文件|*.nds|所有文件|*.*",
+        InitialDirectory = originalPath,
       };
       ofd.ShowDialog();
-      textBox1.Text = ofd.FileName;
+      if (!string.IsNullOrEmpty(ofd.FileName)) { textBox1.Text = ofd.FileName; }
     }
 
     private void Button2_Click(object sender, RoutedEventArgs e)
     {
+      var originalPath = "";
+      try { originalPath = Path.GetDirectoryName(textBox2.Text); } catch { }
       OpenFileDialog ofd = new OpenFileDialog
       {
         Title = "补丁包",
-        Filter = "补丁包|*.zip|所有文件|*.*"
+        Filter = "补丁包|*.zip;*.xzp|所有文件|*.*",
+        InitialDirectory = originalPath,
       };
       ofd.ShowDialog();
-      textBox2.Text = ofd.FileName;
+      if (!string.IsNullOrEmpty(ofd.FileName)) { textBox2.Text = ofd.FileName; }
     }
 
     private void Button3_Click(object sender, RoutedEventArgs e)
     {
+      var originalPath = "";
+      try { originalPath = Path.GetDirectoryName(textBox3.Text); } catch { }
       SaveFileDialog sfd = new SaveFileDialog
       {
         Title = "输出 ROM",
-        Filter = "Nintendo DS ROM文件|*.nds"
+        Filter = "Nintendo DS ROM文件|*.nds|所有文件|*.*",
+        InitialDirectory = originalPath,
       };
       sfd.ShowDialog();
-      textBox3.Text = sfd.FileName;
+      if (!string.IsNullOrEmpty(sfd.FileName)) { textBox3.Text = sfd.FileName; }
     }
 
     private void ButtonConfirm_Click(object sender, RoutedEventArgs e)

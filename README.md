@@ -1,5 +1,5 @@
 # NitroPatcher
-NDS ROM 补丁工具。基于[NitroHelper](https://github.com/Xzonn/NitroHelper)。
+NDS ROM 补丁工具。基于 [NitroHelper](https://github.com/Xzonn/NitroHelper)。
 
 替代[《宝可梦》第四、第五世代汉化修正工具](https://github.com/Xzonn/PCTRTools)中的补丁应用工具。
 

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Security.Cryptography;
 using System.Windows;
 using NitroHelper;
 using PleOps.XdeltaSharp.Decoder;
@@ -13,8 +15,10 @@ namespace NitroPatcher
     {
       if (!CheckIfFileExists(originalPath)) return false;
       if (!CheckIfFileExists(patchPath)) return false;
-      // 创建临时文件夹
 
+      var md5Matched = true;
+
+      // 创建临时文件夹
       string tempPath = "";
       while (string.IsNullOrEmpty(tempPath) || Directory.Exists(tempPath) || File.Exists(tempPath))
       {
@@ -49,6 +53,17 @@ namespace NitroPatcher
 
         var ndsFile = new NDSFile(originalPath);
         var ndsFileStream = File.OpenRead(originalPath);
+        if (File.Exists(Path.Combine(tempPath, "md5.txt")))
+        {
+          var originalMd5 = File.ReadAllText(Path.Combine(tempPath, "md5.txt")).Trim();
+          if (originalMd5.Length != 32)
+          {
+            MessageBox.Show("错误：md5.txt 格式错误，可能是因为补丁包已损坏。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+          }
+          var calculatedMd5 = string.Join("", MD5.Create().ComputeHash(ndsFileStream).Select(_ => $"{_:x2}"));
+          if (string.Compare(calculatedMd5, originalMd5, true) != 0) { md5Matched = false; }
+        }
         ReplaceFile(ndsFile.root, tempPath, new BinaryReader(ndsFileStream));
         ndsFileStream.Close();
         ndsFile.SaveAs(Path.Combine(tempPath, "temp.nds"));
@@ -62,7 +77,14 @@ namespace NitroPatcher
       }
       // 删除临时文件夹
       Directory.Delete(tempPath, true);
-      MessageBox.Show("已完成。", "完成");
+      if (md5Matched)
+      {
+        MessageBox.Show("已完成。", "完成");
+      }
+      else
+      {
+        MessageBox.Show("已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+      }
       return true;
     }
 

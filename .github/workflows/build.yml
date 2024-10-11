@@ -26,9 +26,13 @@ jobs:
           Push-Location -Path "NitroPatcher"
           Move-Item -Path "Properties/AssemblyInfo.cs" -Destination "Properties/AssemblyInfo.cs.bak"
           Get-Content -Path "Properties/AssemblyInfo.cs.bak" -Encoding UTF8 | ForEach-Object { $_ -Replace '(Assembly(?:File)?Version)\("[\d\.]+"\)', "`$1(""$env:XZ_VERSION"")" } | Out-File -FilePath "Properties/AssemblyInfo.cs" -Encoding UTF8
+          Move-Item -Path "MainWindow.xaml" -Destination "MainWindow.xaml.bak"
+          Get-Content -Path "MainWindow.xaml.bak" -Encoding UTF8 | ForEach-Object { $_ -Replace '(版本：)[\d\.]+', "版本：$env:XZ_VERSION" } | Out-File -FilePath "MainWindow.xaml" -Encoding UTF8
           msbuild /p:Configuration=Release /p:TargetFramework=net47 /p:OutDir="../artifacts" /verbosity:minimal
           Remove-Item -Path "Properties/AssemblyInfo.cs"
           Move-Item -Path "Properties/AssemblyInfo.cs.bak" -Destination "Properties/AssemblyInfo.cs"
+          Remove-Item -Path "MainWindow.xaml"
+          Move-Item -Path "MainWindow.xaml.bak" -Destination "MainWindow.xaml"
           Compress-Archive -Path "../artifacts/NitroPatcher.exe" -DestinationPath "../artifacts/NitroPatcher.${env:XZ_VERSION}.zip"
           Pop-Location
       - name: GitHub Release

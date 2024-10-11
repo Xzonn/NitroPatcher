@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          submodules: recursive
       - uses: microsoft/setup-msbuild@v1
       - name: Get latest tag
         id: get-tag
@@ -21,8 +22,8 @@ jobs:
         env:
           XZ_VERSION: ${{ steps.get-tag.outputs.version }}
         run: |
-          Push-Location -Path "NitroPatcher"
           nuget restore
+          Push-Location -Path "NitroPatcher"
           Move-Item -Path "Properties/AssemblyInfo.cs" -Destination "Properties/AssemblyInfo.cs.bak"
           Get-Content -Path "Properties/AssemblyInfo.cs.bak" -Encoding UTF8 | ForEach-Object { $_ -Replace '(Assembly(?:File)?Version)\("[\d\.]+"\)', "`$1(""$env:XZ_VERSION"")" } | Out-File -FilePath "Properties/AssemblyInfo.cs" -Encoding UTF8
           msbuild /p:Configuration=Release /p:TargetFramework=net47 /p:OutDir="../artifacts" /verbosity:minimal

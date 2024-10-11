@@ -105,9 +105,6 @@
     <PackageReference Include="NETStandard.Library">
       <Version>2.0.3</Version>
     </PackageReference>
-    <PackageReference Include="NitroHelper">
-      <Version>0.12.1</Version>
-    </PackageReference>
     <PackageReference Include="PleOps.XdeltaSharp">
       <Version>1.3.0</Version>
     </PackageReference>
@@ -125,6 +122,12 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NitroHelper\NitroHelper.csproj">
+      <Project>{6a4c6090-b46e-441a-a152-987e7fdf8412}</Project>
+      <Name>NitroHelper</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

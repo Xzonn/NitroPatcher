@@ -1,0 +1,3 @@
+[submodule "NitroHelper"]
+	path = NitroHelper
+	url = https://github.com/Xzonn/NitroHelper.git

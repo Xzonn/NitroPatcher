@@ -9,12 +9,18 @@ using PleOps.XdeltaSharp.Decoder;
 
 namespace NitroPatcher
 {
+  enum PatchResult
+  {
+    SUCCESS,
+    MD5_MISMATCH,
+  }
+
   internal class PatchHelper
   {
-    public static bool PatchIt(string originalPath, string patchPath, string outputPath)
+    public static PatchResult PatchIt(string originalPath, string patchPath, string outputPath)
     {
-      if (!CheckIfFileExists(originalPath)) return false;
-      if (!CheckIfFileExists(patchPath)) return false;
+      if (!File.Exists(originalPath)) throw new Exception($"文件不存在：{originalPath}");
+      if (!File.Exists(patchPath)) throw new Exception($"文件不存在：{patchPath}");
 
       var md5Matched = true;
 
@@ -55,14 +61,21 @@ namespace NitroPatcher
         var ndsFileStream = File.OpenRead(originalPath);
         if (File.Exists(Path.Combine(tempPath, "md5.txt")))
         {
-          var originalMd5 = File.ReadAllText(Path.Combine(tempPath, "md5.txt")).Trim();
-          if (originalMd5.Length != 32)
-          {
-            MessageBox.Show("错误：md5.txt 格式错误，可能是因为补丁包已损坏。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            return false;
-          }
+          var originalMd5List = File.ReadAllLines(Path.Combine(tempPath, "md5.txt")).Select(_ => _.Trim());
           var calculatedMd5 = string.Join("", MD5.Create().ComputeHash(ndsFileStream).Select(_ => $"{_:x2}"));
-          if (string.Compare(calculatedMd5, originalMd5, true) != 0) { md5Matched = false; }
+          md5Matched = false;
+          foreach (var md5 in originalMd5List)
+          {
+            if (md5.Length != 32)
+            {
+              throw new Exception("md5.txt 格式错误，可能是因为补丁包已损坏。");
+            }
+            if (string.Compare(calculatedMd5, md5, true) == 0)
+            {
+              md5Matched = true;
+              break;
+            }
+          }
         }
         ReplaceFile(ndsFile.root, tempPath, new BinaryReader(ndsFileStream));
         ndsFileStream.Close();
@@ -71,31 +84,13 @@ namespace NitroPatcher
       }
       catch (Exception e)
       {
-        MessageBox.Show($"错误：{e.Message}\n{e.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         Directory.Delete(tempPath, true);
-        return false;
+        throw e;
       }
       // 删除临时文件夹
       Directory.Delete(tempPath, true);
-      if (md5Matched)
-      {
-        MessageBox.Show("已完成。", "完成");
-      }
-      else
-      {
-        MessageBox.Show("已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
-      }
-      return true;
-    }
 
-    public static bool CheckIfFileExists(string filePath)
-    {
-      bool exists = File.Exists(filePath);
-      if (!exists)
-      {
-        MessageBox.Show($"文件不存在：{filePath}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-      }
-      return exists;
+      return md5Matched ? PatchResult.SUCCESS : PatchResult.MD5_MISMATCH;
     }
 
     static void ReplaceFile(sFolder sFolder, string inputFolder, BinaryReader ndsFileReader, string path = "")
@@ -106,7 +101,8 @@ namespace NitroPatcher
         {
           string xdeltaPath = Path.Combine(new string[] { inputFolder, "xdelta", path, file.name });
           string replacedPath = Path.Combine(new string[] { inputFolder, path, file.name });
-          if (File.Exists(xdeltaPath) && string.IsNullOrEmpty(file.path)) {
+          if (File.Exists(xdeltaPath) && string.IsNullOrEmpty(file.path))
+          {
             ndsFileReader.BaseStream.Position = file.offset;
             var inputStream = new MemoryStream(ndsFileReader.ReadBytes((int)file.size));
             var patchStream = File.OpenRead(xdeltaPath);

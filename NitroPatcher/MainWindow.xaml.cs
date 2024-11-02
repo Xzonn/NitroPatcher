@@ -16,7 +16,12 @@ namespace NitroPatcher
     public MainWindow()
     {
       string[] args = Environment.GetCommandLineArgs();
-      if (args.Length == 4) { PatchHelper.PatchIt(args[1], args[2], args[3]); Environment.Exit(0); }
+      if (args.Length == 4)
+      {
+        var result = PatchHelper.PatchIt(args[1], args[2], args[3]);
+        Console.WriteLine(result);
+        Environment.Exit(0);
+      }
       InitializeComponent();
     }
 
@@ -72,7 +77,21 @@ namespace NitroPatcher
       string outputPath = textBox3.Text;
       Thread thread = new Thread(() =>
       {
-        PatchHelper.PatchIt(originalPath, patchPath, outputPath);
+        try
+        {
+          var result = PatchHelper.PatchIt(originalPath, patchPath, outputPath);
+          if (result == PatchResult.SUCCESS)
+          {
+            MessageBox.Show("已完成。", "完成");
+          }else if (result == PatchResult.MD5_MISMATCH)
+          {
+            MessageBox.Show("已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+          }
+        }
+        catch (Exception ex)
+        {
+          MessageBox.Show($"错误：{ex.Message}\n\n{ex.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
         buttonConfirm.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate ()
         {
           buttonConfirm.Content = buttonConfirmText;
@@ -85,7 +104,7 @@ namespace NitroPatcher
     private void TextBox_DragDrop(object sender, DragEventArgs e)
     {
       string filePath = ((string[])e.Data.GetData(DataFormats.FileDrop))[0];
-      if (PatchHelper.CheckIfFileExists(filePath))
+      if (File.Exists(filePath))
       {
         ((TextBox)sender).Text = filePath;
       }

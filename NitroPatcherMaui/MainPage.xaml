@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="NitroPatcherMaui.MainPage">
+    <ScrollView>
+        <VerticalStackLayout Padding="32" Spacing="32">
+            <Label Text="NDS ROM 补丁工具" Style="{StaticResource Headline}" />
+            <Label Text="作者：Xzonn 版本：1.5.0" Style="{StaticResource SubHeadline}" />
+            <Button Text="选择原始 ROM" Clicked="NdsPathSelect" HorizontalOptions="Fill" />
+            <Label x:Name="NdsPathLabel" LineBreakMode="CharacterWrap" IsVisible="Hidden" />
+            <Button Text="选择补丁包" Clicked="PatchPathSelect" HorizontalOptions="Fill" />
+            <Label x:Name="PatchPathLabel" LineBreakMode="CharacterWrap" IsVisible="Hidden" />
+            <Button x:Name="ConfirmButton" Text="开始运行" Clicked="StartPatch" HorizontalOptions="Fill" />
+            <Label x:Name="LastExceptionLabel" LineBreakMode="CharacterWrap" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

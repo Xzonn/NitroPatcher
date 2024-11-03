@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="top.xzonn.nitropatchermaui" android:versionCode="1" android:versionName="1.5.0">
+	<application android:allowBackup="true" android:icon="@mipmap/nitro" android:supportsRtl="true" android:label="Nitro Patcher MAUI"></application>
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+</manifest>

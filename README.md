@@ -8,12 +8,21 @@ NDS ROM 补丁工具。基于 [NitroHelper](https://github.com/Xzonn/NitroHelper
 
 ## 应用补丁
 ### GUI（图形化界面）
+#### Windows 版（WPF）
 
 支持 Windows 平台。
 
 需要 [.NET Framework 4.7](https://dotnet.microsoft.com/zh-cn/download/dotnet-framework/net47) 或更高版本的运行时（Runtime）。Windows 10/11 应该已经预装了 .NET Framework 4.7。Windows 7 可能需要安装 [KB976932](https://www.catalog.update.microsoft.com/Search.aspx?q=KB976932)、[KB4503548](https://www.catalog.update.microsoft.com/Search.aspx?q=KB4503548) 更新。
 
 根据图形界面的提示操作即可，或者参照 [视频教程](https://www.bilibili.com/video/BV1oH1xYXEdb/t=69)。
+
+#### Android 版（MAUI）
+
+支持 Android 平台。
+
+理论上最低支持 Android 5.0（API 21），但仅在 Android 12.0（API 31）上进行了测试。
+
+根据图形界面的提示操作即可。
 
 ### CLI（命令行界面）
 

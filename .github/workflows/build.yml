@@ -1,9 +1,18 @@
-name: Build on push
+name: Build
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
+    inputs:
+      publish:
+        required: true
+        type: boolean
+      version:
+        required: true
+        type: string
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -11,36 +20,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: microsoft/setup-msbuild@v1
-      - name: Get latest tag
-        id: get-tag
-        run: |
-          $(git describe --tags) -Replace '^v', 'version=' >> $env:GITHUB_OUTPUT
-      - name: Build and pack package
+      - name: Build binaries
         env:
-          XZ_VERSION: ${{ steps.get-tag.outputs.version }}
+          XZ_VERSION: ${{ inputs.version }}
         run: |
-          nuget restore
-          Push-Location -Path "NitroPatcher"
-          Move-Item -Path "Properties/AssemblyInfo.cs" -Destination "Properties/AssemblyInfo.cs.bak"
-          Get-Content -Path "Properties/AssemblyInfo.cs.bak" -Encoding UTF8 | ForEach-Object { $_ -Replace '(Assembly(?:File)?Version)\("[\d\.]+"\)', "`$1(""$env:XZ_VERSION"")" } | Out-File -FilePath "Properties/AssemblyInfo.cs" -Encoding UTF8
-          Move-Item -Path "MainWindow.xaml" -Destination "MainWindow.xaml.bak"
-          Get-Content -Path "MainWindow.xaml.bak" -Encoding UTF8 | ForEach-Object { $_ -Replace '(版本：)[\d\.]+', "版本：$env:XZ_VERSION" } | Out-File -FilePath "MainWindow.xaml" -Encoding UTF8
-          msbuild /p:Configuration=Release /p:TargetFramework=net47 /p:OutDir="../artifacts" /verbosity:minimal
-          Remove-Item -Path "Properties/AssemblyInfo.cs"
-          Move-Item -Path "Properties/AssemblyInfo.cs.bak" -Destination "Properties/AssemblyInfo.cs"
-          Remove-Item -Path "MainWindow.xaml"
-          Move-Item -Path "MainWindow.xaml.bak" -Destination "MainWindow.xaml"
-          Compress-Archive -Path "../artifacts/NitroPatcher.exe" -DestinationPath "../artifacts/NitroPatcher.${env:XZ_VERSION}.zip"
-          Pop-Location
+          . scripts/build.ps1
+      - name: Pack binaries
+        if: ${{ inputs.publish }}
+        env:
+          XZ_VERSION: ${{ inputs.version }}
+        run: |
+          . scripts/pack.ps1
       - name: GitHub Release
+        if: ${{ inputs.publish }}
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: "artifacts/NitroPatcher.*.zip"
+          artifacts: "artifacts/*.zip"
           bodyFile: README.md
-          name: "v${{ steps.get-tag.outputs.version }}"
+          name: ${{ inputs.version }}
           draft: true
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,13 @@
+name: Build on push
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      publish: true
+      version: ${{ github.ref_name }}

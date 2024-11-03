@@ -20,7 +20,7 @@ for root, dirs, files in os.walk("."):
     with open(file_path, "r", -1, "utf8") as reader:
       text = reader.read()
 
-    text = PATTERN.sub(rf"\1\2-{version}" if git else rf"\1{version}", text)
+    text = PATTERN.sub(rf"\g<1>\g<2>-{version}" if git else rf"\g<1>{version}", text)
 
     with open(file_path, "w", -1, "utf8", None, "\n") as writer:
       writer.write(text)

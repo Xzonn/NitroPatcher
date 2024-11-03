@@ -18,9 +18,40 @@ namespace NitroPatcher
       string[] args = Environment.GetCommandLineArgs();
       if (args.Length == 4)
       {
-        var result = PatchHelper.PatchIt(args[1], args[2], args[3]);
-        Console.WriteLine(result);
-        Environment.Exit(0);
+        // 创建临时文件夹
+        string tempPath = "";
+        while (string.IsNullOrEmpty(tempPath) || Directory.Exists(tempPath) || File.Exists(tempPath))
+        {
+          tempPath = Path.Combine(Path.GetTempPath(), $"xz_nitropatcher_{DateTime.Now.GetHashCode():X8}");
+        }
+
+        try
+        {
+          var result = PatchHelper.PatchIt(args[1], args[2], tempPath);
+          var fileStream = File.Create(args[3]);
+          result.stream.Position = 0;
+          result.stream.CopyTo(fileStream);
+          fileStream.Close();
+
+          // 删除临时文件夹
+          if (Directory.Exists(tempPath))
+          {
+            Directory.Delete(tempPath, true);
+          }
+
+          Console.WriteLine(result.returnValue);
+          Environment.Exit(0);
+        }
+        catch (Exception ex)
+        {
+          // 删除临时文件夹
+          if (Directory.Exists(tempPath))
+          {
+            Directory.Delete(tempPath, true);
+          }
+
+          throw ex;
+        }
       }
       InitializeComponent();
     }
@@ -77,21 +108,42 @@ namespace NitroPatcher
       string outputPath = textBox3.Text;
       Thread thread = new Thread(() =>
       {
+        // 创建临时文件夹
+        string tempPath = "";
+        while (string.IsNullOrEmpty(tempPath) || Directory.Exists(tempPath) || File.Exists(tempPath))
+        {
+          tempPath = Path.Combine(Path.GetTempPath(), $"xz_nitropatcher_{DateTime.Now.GetHashCode():X8}");
+        }
+
         try
         {
-          var result = PatchHelper.PatchIt(originalPath, patchPath, outputPath);
-          if (result == PatchResult.SUCCESS)
+          var result = PatchHelper.PatchIt(originalPath, patchPath, tempPath);
+          var fileStream = File.Create(outputPath);
+          result.stream.Position = 0;
+          result.stream.CopyTo(fileStream);
+          fileStream.Close();
+
+          switch (result.returnValue)
           {
-            MessageBox.Show("已完成。", "完成");
-          }else if (result == PatchResult.MD5_MISMATCH)
-          {
-            MessageBox.Show("已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            case PatchReturnValue.SUCCESS:
+              MessageBox.Show("已完成。", "完成");
+              break;
+            case PatchReturnValue.MD5_MISMATCH:
+              MessageBox.Show("已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+              break;
           }
         }
         catch (Exception ex)
         {
           MessageBox.Show($"错误：{ex.Message}\n\n{ex.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+
+        // 删除临时文件夹
+        if (Directory.Exists(tempPath))
+        {
+          Directory.Delete(tempPath, true);
+        }
+
         buttonConfirm.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate ()
         {
           buttonConfirm.Content = buttonConfirmText;

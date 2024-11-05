@@ -16,11 +16,14 @@ NDS ROM 补丁工具。基于 [NitroHelper](https://github.com/Xzonn/NitroHelper
 
 根据图形界面的提示操作即可，或者参照 [视频教程](https://www.bilibili.com/video/BV1oH1xYXEdb/t=69)。
 
-#### Android 版（MAUI）
+#### Windows/Android 版（MAUI）
+[<img src="https://get.microsoft.com/images/zh-cn%20dark.svg" width="200"/>](https://apps.microsoft.com/detail/9NPLXRZ04F04?mode=direct)
 
-支持 Android 平台。
+支持 Windows/Android 平台。
 
-理论上最低支持 Android 5.0（API 21），但仅在 Android 12.0（API 31）上进行了测试。
+Windows 平台需从 [Microsoft Store](https://www.microsoft.com/store/apps/9NPLXRZ04F04) 下载安装，需要 Windows 10 17763.0 或更高版本。
+
+Android 平台理论上最低支持 Android 5.0（API 21），但仅在 Android 12.0（API 31）上进行了测试。
 
 根据图形界面的提示操作即可。
 

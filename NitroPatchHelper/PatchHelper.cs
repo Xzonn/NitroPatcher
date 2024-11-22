@@ -101,7 +101,6 @@ public class PatchHelper
         {
           ndsFileReader.BaseStream.Position = file.offset;
           var inputStream = new MemoryStream(ndsFileReader.ReadBytes((int)file.size));
-          Directory.CreateDirectory(Path.GetDirectoryName(replacedPath));
           var outputStream = new MemoryStream();
           using var decoder = new Decoder(inputStream, patchStream, outputStream);
           decoder.Run();

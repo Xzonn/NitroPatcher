@@ -48,6 +48,7 @@ public class PatchHelper
         using var zipStream = file.Open();
         zipStream.CopyTo(stream);
         newStreams[file.FullName.Replace('\\', '/')] = stream;
+        stream.Position = 0;
         zipStream.Close();
       }
     }

@@ -5,7 +5,7 @@
 #else
   var fileName = Path.GetFileName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
 #endif
-  Console.WriteLine($"NitroPatcherCli\n作者：Xzonn 版本：1.5.1\n\n用法：{fileName} 原始ROM 补丁包 输出ROM");
+  Console.WriteLine($"NitroPatcherCli\n作者：Xzonn 版本：1.5.2\n\n用法：{fileName} 原始ROM 补丁包 输出ROM");
   Environment.Exit(0);
 }
 

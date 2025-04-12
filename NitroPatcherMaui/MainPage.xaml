@@ -3,7 +3,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="32" Spacing="32">
             <Label Text="NDS ROM 补丁工具" Style="{StaticResource Headline}" />
-            <Label Text="作者：Xzonn 版本：1.5.1" Style="{StaticResource SubHeadline}" />
+            <Label Text="作者：Xzonn 版本：1.5.2" Style="{StaticResource SubHeadline}" />
             <Button Text="选择原始 ROM" Clicked="NdsPathSelect" HorizontalOptions="Fill" />
             <Label x:Name="NdsPathLabel" LineBreakMode="CharacterWrap" IsVisible="Hidden" />
             <Button Text="选择补丁包" Clicked="PatchPathSelect" HorizontalOptions="Fill" />

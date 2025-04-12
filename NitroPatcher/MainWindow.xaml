@@ -36,7 +36,7 @@
       <StatusBar.Background>
         <SolidColorBrush Color="{DynamicResource {x:Static SystemColors.WindowColorKey}}"/>
       </StatusBar.Background>
-      <StatusBarItem Content="作者：Xzonn 版本：1.5.1"/>
+      <StatusBarItem Content="作者：Xzonn 版本：1.5.2"/>
     </StatusBar>
   </Grid>
 </Window>

@@ -6,7 +6,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Decoder = PleOps.XdeltaSharp.Decoder.Decoder;
+using XdeltaDecoder = PleOps.XdeltaSharp.Decoder.Decoder;
 
 namespace NitroPatcher;
 
@@ -53,9 +53,21 @@ public class PatchHelper
       }
     }
 
-    var ndsFile = new NDSFile(originalPath);
-    using var ndsFileStream = File.OpenRead(originalPath);
+    Stream ndsFileStream = File.OpenRead(originalPath);
     var inputMd5 = string.Join("", MD5.Create().ComputeHash(ndsFileStream).Select(_ => $"{_:x2}"));
+
+    // 如果有预处理补丁，则应用预处理补丁
+    if (newStreams.TryGetValue($"preprocessing/{inputMd5}.xdelta", out var patchStream))
+    {
+      var newNdsFileStream = new MemoryStream();
+      using var decoder = new XdeltaDecoder(ndsFileStream, patchStream, newNdsFileStream);
+      decoder.Run();
+      ndsFileStream.Close();
+      ndsFileStream = newNdsFileStream;
+      ndsFileStream.Position = 0;
+    }
+
+    var ndsFile = new NDSFile(ndsFileStream);
     if (newStreams.TryGetValue("md5.txt", out var md5Stream))
     {
       var originalMd5List = Encoding.UTF8.GetString(md5Stream.ToArray()).Split('\n').Select(_ => _.Trim());
@@ -81,6 +93,12 @@ public class PatchHelper
     var outputMd5 = string.Join("", MD5.Create().ComputeHash(outputStream).Select(_ => $"{_:x2}"));
     outputStream.Position = 0;
 
+    foreach (var stream in newStreams)
+    {
+      stream.Value.Close();
+    }
+    ndsFileStream.Close();
+
     return new PatchResult
     {
       returnValue = md5Matched ? PatchReturnValue.SUCCESS : PatchReturnValue.MD5_MISMATCH,
@@ -103,7 +121,7 @@ public class PatchHelper
           ndsFileReader.BaseStream.Position = file.offset;
           var inputStream = new MemoryStream(ndsFileReader.ReadBytes((int)file.size));
           var outputStream = new MemoryStream();
-          using var decoder = new Decoder(inputStream, patchStream, outputStream);
+          using var decoder = new XdeltaDecoder(inputStream, patchStream, outputStream);
           decoder.Run();
           newStreams[replacedPath] = outputStream;
 

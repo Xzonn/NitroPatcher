@@ -47,7 +47,7 @@ public class PatchHelper
         var stream = new MemoryStream();
         using var zipStream = file.Open();
         zipStream.CopyTo(stream);
-        newStreams[file.FullName.Replace('\\', '/')] = stream;
+        newStreams[file.FullName.Replace('\\', '/').ToLowerInvariant()] = stream;
         stream.Position = 0;
         zipStream.Close();
       }
@@ -114,8 +114,8 @@ public class PatchHelper
     {
       foreach (var file in sFolder.files)
       {
-        string xdeltaPath = Path.Combine(["xdelta", path, file.name]).Replace('\\', '/');
-        string replacedPath = Path.Combine([path, file.name]).Replace('\\', '/');
+        string xdeltaPath = Path.Combine(["xdelta", path, file.name]).Replace('\\', '/').ToLowerInvariant();
+        string replacedPath = Path.Combine([path, file.name]).Replace('\\', '/').ToLowerInvariant();
         if (newStreams.TryGetValue(xdeltaPath, out var patchStream) && string.IsNullOrEmpty(file.path))
         {
           ndsFileReader.BaseStream.Position = file.offset;
@@ -125,9 +125,9 @@ public class PatchHelper
           decoder.Run();
           newStreams[replacedPath] = outputStream;
 
+          newStreams[xdeltaPath].Close();
           newStreams.Remove(xdeltaPath);
           patchStream.Close();
-          patchStream.Dispose();
         }
         if (!newStreams.TryGetValue(replacedPath, out var replaceStream)) { continue; }
         file.size = (uint)replaceStream.Length;
@@ -139,7 +139,7 @@ public class PatchHelper
     {
       foreach (var folder in sFolder.folders)
       {
-        ReplaceFile(folder, newStreams, ndsFileReader, Path.Combine([path, folder.name]).Replace('\\', '/'));
+        ReplaceFile(folder, newStreams, ndsFileReader, Path.Combine([path, folder.name]).Replace('\\', '/').ToLowerInvariant());
       }
     }
   }

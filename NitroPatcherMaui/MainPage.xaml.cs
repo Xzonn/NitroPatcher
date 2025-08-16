@@ -18,7 +18,7 @@ public partial class MainPage : ContentPage
   {
     var fileType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
       {
-        { DevicePlatform.Android, [ "application/octet-stream" ] },
+        { DevicePlatform.Android, [ "application/*" ] },
         { DevicePlatform.WinUI, [ ".nds" ] },
         { DevicePlatform.macOS, [ "nds" ] },
       });
@@ -49,7 +49,7 @@ public partial class MainPage : ContentPage
   {
     var fileType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
       {
-        { DevicePlatform.Android, [ "application/octet-stream", "application/zip"] },
+        { DevicePlatform.Android, [ "application/*"] },
         { DevicePlatform.WinUI, [ ".xzp", ".zip" ] },
         { DevicePlatform.macOS, [ "xzp", "zip" ] },
       });

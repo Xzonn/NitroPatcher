@@ -1,4 +1,7 @@
 $version = $(${env:XZ_VERSION} -Replace '^v', '')
+if ([string]::IsNullOrWhiteSpace($version)) {
+  $version = "dev"
+}
 Compress-Archive -Path "artifacts/gui/NitroPatcher.exe" -DestinationPath "artifacts/NitroPatcher.$version.zip" -Force
 Compress-Archive -Path "artifacts/cli-win/NitroPatcherCli.exe" -DestinationPath "artifacts/NitroPatcherCli.$version-win-x64.zip" -Force
 Compress-Archive -Path "artifacts/cli-linux/NitroPatcherCli" -DestinationPath "artifacts/NitroPatcherCli.$version-linux-x64.zip" -Force

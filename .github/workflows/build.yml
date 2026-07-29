@@ -9,13 +9,31 @@ on:
       version:
         required: true
         type: string
+    secrets:
+      APPLE_CERTIFICATE_BASE64:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_SIGNING_IDENTITY:
+        required: false
+      APPLE_PROVISIONING_PROFILE_BASE64:
+        required: false
+      APPLE_API_KEY_BASE64:
+        required: false
+      APPLE_API_KEY_ID:
+        required: false
+      APPLE_API_ISSUER_ID:
+        required: false
+
+permissions:
+  contents: read
 
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,20 +42,184 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.423"
       - uses: microsoft/setup-msbuild@v2
+      - name: Test patch engine
+        run: dotnet test NitroPatchHelper.Tests/NitroPatchHelper.Tests.csproj -c Release
       - name: Build binaries
         env:
           XZ_VERSION: ${{ inputs.version }}
-        run: |
-          . scripts/build.ps1
+        run: . scripts/build.ps1
       - name: Pack binaries
-        if: ${{ inputs.publish }}
         env:
           XZ_VERSION: ${{ inputs.version }}
+        run: . scripts/pack.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.423"
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+      - name: Build Android app
+        env:
+          XZ_BUILD_NUMBER: ${{ github.run_number }}
+          XZ_VERSION: ${{ inputs.version }}
+        run: scripts/build-android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.423"
+      - name: Install MAUI Mac Catalyst workload
+        run: dotnet workload install maui-maccatalyst
+      - name: Test patch engine
+        run: dotnet test NitroPatchHelper.Tests/NitroPatchHelper.Tests.csproj -c Release
+      - name: Validate Apple release secrets
+        if: inputs.publish
+        env:
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
-          . scripts/pack.ps1
-      - name: GitHub Release
-        if: ${{ inputs.publish }}
+          : "${APPLE_CERTIFICATE_BASE64:?APPLE_CERTIFICATE_BASE64 is required}"
+          : "${APPLE_CERTIFICATE_PASSWORD:?APPLE_CERTIFICATE_PASSWORD is required}"
+          : "${APPLE_SIGNING_IDENTITY:?APPLE_SIGNING_IDENTITY is required}"
+          : "${APPLE_PROVISIONING_PROFILE_BASE64:?APPLE_PROVISIONING_PROFILE_BASE64 is required}"
+          : "${APPLE_API_KEY_BASE64:?APPLE_API_KEY_BASE64 is required}"
+          : "${APPLE_API_KEY_ID:?APPLE_API_KEY_ID is required}"
+          : "${APPLE_API_ISSUER_ID:?APPLE_API_ISSUER_ID is required}"
+      - name: Import Apple signing assets
+        if: inputs.publish
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          certificate_path="$RUNNER_TEMP/nitropatcher.p12"
+          profile_path="$RUNNER_TEMP/nitropatcher.provisionprofile"
+          keychain_path="$RUNNER_TEMP/nitropatcher.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+          echo "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+
+          profile_uuid="$(security cms -D -i "$profile_path" | plutil -extract UUID raw -)"
+          installed_profile="$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.provisionprofile"
+          mkdir -p "$(dirname "$installed_profile")"
+          cp "$profile_path" "$installed_profile"
+
+          echo "APPLE_KEYCHAIN_PATH=$keychain_path" >> "$GITHUB_ENV"
+          echo "APPLE_INSTALLED_PROFILE=$installed_profile" >> "$GITHUB_ENV"
+          echo "XZ_CODESIGN_PROVISION=$profile_uuid" >> "$GITHUB_ENV"
+      - name: Build Apple Silicon binaries
+        env:
+          XZ_BUILD_NUMBER: ${{ github.run_number }}
+          XZ_CODESIGN_KEY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          XZ_VERSION: ${{ inputs.version }}
+        run: scripts/build-macos.sh
+      - name: Notarize and package Apple Silicon binaries
+        env:
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          XZ_PUBLISH: ${{ inputs.publish }}
+          XZ_VERSION: ${{ inputs.version }}
+        run: |
+          version="${XZ_VERSION#v}"
+          version="${version:-dev}"
+          app_path="$(find artifacts/maui-macos-arm64 -maxdepth 1 -type d -name '*.app' -print -quit)"
+          cli_path="artifacts/cli-osx-arm64/NitroPatcherCli"
+
+          if [[ "$XZ_PUBLISH" == "true" ]]; then
+            api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+            submission_path="$RUNNER_TEMP/NitroPatcher-notarization.zip"
+            echo "$APPLE_API_KEY_BASE64" | base64 --decode > "$api_key_path"
+            ditto -c -k --keepParent "$app_path" "$submission_path"
+            xcrun notarytool submit "$submission_path" \
+              --key "$api_key_path" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER_ID" \
+              --wait
+            xcrun stapler staple "$app_path"
+            codesign --verify --deep --strict --verbose=2 "$app_path"
+            spctl --assess --type execute --verbose=4 "$app_path"
+            xcrun stapler validate "$app_path"
+          fi
+
+          ditto -c -k --keepParent "$app_path" "artifacts/NitroPatcherMAUI.${version}-macos-arm64.zip"
+          ditto -c -k "$cli_path" "artifacts/NitroPatcherCli.${version}-osx-arm64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-artifacts
+          path: artifacts/*.zip
+          if-no-files-found: error
+      - name: Remove Apple signing assets
+        if: always() && inputs.publish
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        run: |
+          if [[ -n "${APPLE_KEYCHAIN_PATH:-}" ]]; then
+            security delete-keychain "$APPLE_KEYCHAIN_PATH" || true
+          fi
+          if [[ -n "${APPLE_INSTALLED_PROFILE:-}" ]]; then
+            rm -f "$APPLE_INSTALLED_PROFILE"
+          fi
+          rm -f \
+            "$RUNNER_TEMP/nitropatcher.p12" \
+            "$RUNNER_TEMP/nitropatcher.provisionprofile" \
+            "$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8" \
+            "$RUNNER_TEMP/NitroPatcher-notarization.zip"
+
+  release:
+    if: inputs.publish
+    needs: [windows, android, macos-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-artifacts"
+          path: artifacts
+          merge-multiple: true
+      - name: List release artifacts
+        run: sha256sum artifacts/*.zip
+      - name: Create draft release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true

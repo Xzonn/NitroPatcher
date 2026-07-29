@@ -16,14 +16,16 @@ NDS ROM 补丁工具。基于 [NitroHelper](https://github.com/Xzonn/NitroHelper
 
 根据图形界面的提示操作即可，或者参照 [视频教程](https://www.bilibili.com/video/BV1oH1xYXEdb/t=69)。
 
-#### Windows/Android 版（MAUI）
+#### Windows/Android/macOS 版（MAUI）
 [<img src="https://get.microsoft.com/images/zh-cn%20dark.svg" width="200"/>](https://apps.microsoft.com/detail/9NPLXRZ04F04?mode=direct)
 
-支持 Windows/Android 平台。
+支持 Windows、Android 和 Apple 芯片 Mac。
 
 Windows 平台需从 [Microsoft Store](https://www.microsoft.com/store/apps/9NPLXRZ04F04) 下载安装，需要 Windows 10 17763.0 或更高版本。
 
 Android 平台理论上最低支持 Android 5.0（API 21），但仅在 Android 12.0（API 31）上进行了测试。
+
+Apple 芯片版支持 macOS 11 或更高版本。从 GitHub Release 下载 `NitroPatcherMAUI.<版本>-macos-arm64.zip`，解压后将 `NitroPatcherMaui.app` 移入“应用程序”目录即可。正式发布包使用 Developer ID 签名并经过 Apple 公证，不需要安装 Rosetta 或 .NET 运行时。
 
 根据图形界面的提示操作即可。
 
@@ -31,13 +33,34 @@ Android 平台理论上最低支持 Android 5.0（API 21），但仅在 Android 
 
 支持 Windows、Linux、macOS 平台。
 
-需要 [.NET 6.0 运行时](https://dotnet.microsoft.com/zh-cn/download/dotnet/6.0)（Runtime）。
+Windows、Linux 和 Intel Mac 版本需要 [.NET 6.0 运行时](https://dotnet.microsoft.com/zh-cn/download/dotnet/6.0)（Runtime）。`NitroPatcherCli.<版本>-osx-arm64.zip` 是 Apple 芯片自包含版本，不需要另行安装 .NET 或 Rosetta。
 
 用法：
 
 ```
 NitroPatcherCli 原始ROM 补丁包 输出ROM
 ```
+
+## 构建 Apple 芯片版本
+
+需要 Apple 芯片 Mac、Xcode、.NET 8 SDK 和 `maui-maccatalyst` workload。无发布签名的本地构建命令：
+
+```sh
+dotnet workload install maui-maccatalyst
+scripts/build-macos.sh
+```
+
+推送版本标签时，GitHub Actions 会构建、签名、公证并将 macOS GUI 和 CLI 包加入同一个草稿 Release。仓库需要配置以下 Actions Secrets：
+
+- `APPLE_CERTIFICATE_BASE64`：Developer ID Application 证书及私钥的 P12 文件，Base64 编码。
+- `APPLE_CERTIFICATE_PASSWORD`：P12 密码。
+- `APPLE_SIGNING_IDENTITY`：完整的 Developer ID Application 签名身份。
+- `APPLE_PROVISIONING_PROFILE_BASE64`：Mac Catalyst Developer ID provisioning profile，Base64 编码。
+- `APPLE_API_KEY_BASE64`：App Store Connect API 私钥，Base64 编码。
+- `APPLE_API_KEY_ID`：API Key ID。
+- `APPLE_API_ISSUER_ID`：API Issuer ID。
+
+发布任务会执行 `codesign`、Gatekeeper 评估及公证票据验证；任一步失败都不会创建不完整的正式发布。
 
 ## 创建补丁
 ### 基本用法

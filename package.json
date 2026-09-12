@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "nitro-patcher": "^0.1.0",
-    "antd": "^6.6.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

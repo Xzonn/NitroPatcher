@@ -100,6 +100,16 @@ fieldset {
   display: flex;
   gap: 8px;
 }
+.file-picker--dragging .input {
+  border-color: #1677ff;
+  background: #e6f4ff;
+  outline: 2px solid #91caff;
+  outline-offset: 2px;
+}
+.file-picker-error {
+  margin: 6px 0 0;
+  color: #a8071a;
+}
 .form-actions {
   display: flex;
   justify-content: center;

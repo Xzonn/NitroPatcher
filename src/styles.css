@@ -168,7 +168,7 @@ fieldset {
 .patch-readme > pre,
 .markdown-content {
   margin: 0;
-  max-height: 360px;
+  max-height: 640px;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -216,8 +216,10 @@ fieldset {
   color: #1668dc;
 }
 .content-notice {
-  margin: 24px 0 0;
   color: #595959;
+  margin: 16px 0 0 0;
+  padding: 16px 0 0 0;
+  border-top: 1px solid #d9d9d9;
 }
 .results:not(:empty) {
   margin-top: 20px;

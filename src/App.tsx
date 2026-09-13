@@ -91,6 +91,29 @@ export const App = () => {
           </div>
         </fieldset>
       </form>
+      {error || engine.result ? (
+        <div className="results">
+          {error && <Alert variant="error">错误：{error}</Alert>}
+          {engine.result && (
+            <>
+              <Alert variant={engine.result.mismatch ? 'warning' : 'success'}>
+                {engine.result.mismatch
+                  ? '已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。'
+                  : '已完成。'}
+              </Alert>
+              <dl className="checksums">
+                <dt className="checksum-label">原始 ROM 的 MD5：</dt>
+                <dd className="checksum-value">{engine.result.inputMd5}</dd>
+                <dt className="checksum-label">生成 ROM 的 MD5：</dt>
+                <dd className="checksum-value">{engine.result.outputMd5}</dd>
+              </dl>
+              <a className="button" href={engine.result.url} download={engine.result.name}>
+                下载 ROM
+              </a>
+            </>
+          )}
+        </div>
+      ) : null}
       {patch && (
         <section
           className="patch-info"
@@ -106,7 +129,7 @@ export const App = () => {
             <Alert variant="warning">无法读取补丁信息：{engine.metadataError}</Alert>
           ) : metadataFields.length > 0 ? (
             <div>
-              <h2>补丁元数据：</h2>
+              <h2>补丁信息：</h2>
               <dl className="metadata">
                 {metadataFields.map(({ field, label, value }) => (
                   <Fragment key={field}>
@@ -121,7 +144,6 @@ export const App = () => {
           ) : null}
           {engine.readme && (
             <div className="patch-readme">
-              <h2>补丁说明：</h2>
               {engine.readme.format === 'markdown' ? (
                 <div className="markdown-content">
                   <Markdown
@@ -142,33 +164,12 @@ export const App = () => {
                 <pre>{engine.readme.content.trimEnd()}</pre>
               )}
               <blockquote className="content-notice">
-                补丁元数据和说明内容来自所选补丁包，并非由当前网站提供或认可，请注意辨别。
+                补丁信息和说明内容来自所选补丁包，并非由当前网站提供或认可，请注意辨别。
               </blockquote>
             </div>
           )}
         </section>
       )}
-      <div className="results">
-        {error && <Alert variant="error">错误：{error}</Alert>}
-        {engine.result && (
-          <>
-            <Alert variant={engine.result.mismatch ? 'warning' : 'success'}>
-              {engine.result.mismatch
-                ? '已完成，但是原始 ROM 的 MD5 校验失败，可能是因为使用了错误的原始 ROM。'
-                : '已完成。'}
-            </Alert>
-            <dl className="checksums">
-              <dt className="checksum-label">原始 ROM 的 MD5：</dt>
-              <dd className="checksum-value">{engine.result.inputMd5}</dd>
-              <dt className="checksum-label">生成 ROM 的 MD5：</dt>
-              <dd className="checksum-value">{engine.result.outputMd5}</dd>
-            </dl>
-            <a className="button" href={engine.result.url} download={engine.result.name}>
-              下载 ROM
-            </a>
-          </>
-        )}
-      </div>
       <footer className="page-footer">
         <span>网站设计：Xzonn</span>
         <span role="status">{busy ? '正在处理…' : engine.ready ? '就绪' : '正在准备…'}</span>

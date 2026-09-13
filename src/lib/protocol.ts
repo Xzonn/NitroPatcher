@@ -1,10 +1,15 @@
-import type { BrowserPatchResult } from 'nitro-patcher/browser';
-export interface PatchRequest {
-  id: number;
-  rom: File;
-  patch: File;
-}
+import type { BrowserPatchResult, PatchInfo } from 'nitro-patcher/browser';
+export type PatchRequest =
+  | {
+      type: 'patch';
+      id: number;
+      rom: File;
+      patch: File;
+    }
+  | { type: 'metadata'; id: number; patch: File };
 export type WorkerReply =
   | { type: 'ready' }
+  | { type: 'metadata'; id: number; info: PatchInfo }
+  | { type: 'metadata-error'; id: number; message: string }
   | { type: 'done'; id: number; result: BrowserPatchResult }
   | { type: 'error'; id: number; message: string };

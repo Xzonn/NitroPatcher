@@ -122,6 +122,93 @@ fieldset {
   display: grid;
   gap: 12px;
 }
+.patch-info {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+}
+.patch-info h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+.patch-info p {
+  margin: 0;
+  color: #737373;
+}
+.metadata {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+.metadata dt {
+  color: #595959;
+}
+.metadata dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.patch-readme:not(:first-child) {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #d9d9d9;
+}
+.patch-readme > pre,
+.markdown-content {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.markdown-content {
+  white-space: normal;
+}
+.markdown-content > :first-child {
+  margin-top: 0;
+}
+.markdown-content > :last-child {
+  margin-bottom: 0;
+}
+.markdown-content h1 {
+  font-size: 22px;
+}
+.markdown-content h2 {
+  font-size: 20px;
+  margin: 16px 0 8px;
+}
+.markdown-content h3 {
+  font-size: 18px;
+  margin: 16px 0 8px;
+}
+.markdown-content p {
+  color: inherit;
+  margin: 12px 0;
+}
+.markdown-content pre {
+  overflow: auto;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+.markdown-content code {
+  font-family: ui-monospace, Consolas, monospace;
+}
+.markdown-content blockquote {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 3px solid #d9d9d9;
+}
+.markdown-content a {
+  color: #1668dc;
+}
+.content-notice {
+  margin: 24px 0 0;
+  color: #595959;
+}
 .results:not(:empty) {
   margin-top: 20px;
 }

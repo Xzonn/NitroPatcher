@@ -18,9 +18,10 @@
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run build"
   },
   "dependencies": {
-    "nitro-patcher": "^0.1.0",
+    "nitro-patcher": "0.2.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

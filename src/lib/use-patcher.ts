@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PatchInfo } from 'nitro-patcher/browser';
 import type { PatchRequest, WorkerReply } from './protocol';
+import type { CatalogPatch } from './catalog';
 interface Result {
   url: string;
   name: string;
@@ -12,6 +13,10 @@ export const usePatcher = (patch: File | null) => {
   const worker = useRef<Worker | null>(null);
   const requestId = useRef(0);
   const metadataId = useRef(0);
+  const downloadId = useRef(0);
+  const downloads = useRef(
+    new Map<number, { resolve: (file: File) => void; reject: (reason: Error) => void }>(),
+  );
   const [metadataState, setMetadataState] = useState<{
     file: File;
     info: PatchInfo | null;
@@ -41,6 +46,15 @@ export const usePatcher = (patch: File | null) => {
         });
         return;
       }
+      if (data.type === 'download' || data.type === 'download-error') {
+        const pending = downloads.current.get(data.id);
+        if (!pending) return;
+        downloads.current.delete(data.id);
+        if (data.type === 'download-error') pending.reject(new Error(data.message));
+        else
+          pending.resolve(new File([data.buffer], data.name, { type: 'application/octet-stream' }));
+        return;
+      }
       if (data.id !== requestId.current) return;
       if (data.type === 'error') {
         setError(data.message);
@@ -65,9 +79,14 @@ export const usePatcher = (patch: File | null) => {
       setError(event.message);
       setStatus('error');
       setReady(false);
+      for (const pending of downloads.current.values()) pending.reject(new Error(event.message));
+      downloads.current.clear();
     };
     return () => {
       engine.terminate();
+      for (const pending of downloads.current.values())
+        pending.reject(new Error('补丁下载已取消。'));
+      downloads.current.clear();
       worker.current = null;
       if (downloadUrl.current) URL.revokeObjectURL(downloadUrl.current);
     };
@@ -101,6 +120,20 @@ export const usePatcher = (patch: File | null) => {
       patch,
     } satisfies PatchRequest);
   };
+  const download = (entry: CatalogPatch): Promise<File> => {
+    if (!worker.current || !ready) return Promise.reject(new Error('补丁引擎尚未就绪。'));
+    const id = ++downloadId.current;
+    return new Promise((resolve, reject) => {
+      downloads.current.set(id, { resolve, reject });
+      worker.current?.postMessage({
+        type: 'download',
+        id,
+        url: entry.downloadUrl,
+        expectedPatchId: entry.patchId,
+        expectedVersion: entry.latestVersion,
+      } satisfies PatchRequest);
+    });
+  };
   const currentMetadata = metadataState?.file === patch ? metadataState : null;
   return {
     ready,
@@ -109,6 +142,7 @@ export const usePatcher = (patch: File | null) => {
     result,
     reset,
     run,
+    download,
     metadata: currentMetadata?.info?.metadata ?? null,
     readme: currentMetadata?.info?.readme ?? null,
     metadataError: currentMetadata?.error ?? '',

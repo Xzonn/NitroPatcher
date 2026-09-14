@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       nitro-patcher:
-        specifier: 0.2.0
-        version: 0.2.0
+        specifier: 0.2.1
+        version: 0.2.1
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -959,8 +959,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  nitro-patcher@0.2.0:
-    resolution: {integrity: sha512-o1d9fth3JD8fWnP5my2VfhAeiL1LHq8/goDJja9vTn83OEMuzyPP+/WxAlK6CNuZay2g3Fr7cjtBpR4Rk/g1eQ==}
+  nitro-patcher@0.2.1:
+    resolution: {integrity: sha512-215pzaplMhz3Oz3w1R3zSJOJng4kt4gsAzo8hkGvRlPKdM5Yu5KCJhO3FU1PdYljpIP+TnTMt3pD9EPC2mp7HQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2203,7 +2203,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  nitro-patcher@0.2.0:
+  nitro-patcher@0.2.1:
     dependencies:
       markdansi: 0.3.3
 

@@ -1,12 +1,22 @@
 import { Fragment, useState } from 'react';
 import Markdown from 'react-markdown';
 import { Alert, Button, FilePicker, FormField, Input } from './components/ui';
+import { compareVersions, readRomIdentity } from './lib/catalog';
+import type { CatalogPatch, RomIdentity } from './lib/catalog';
+import { usePatchCatalog } from './lib/use-catalog';
 import { usePatcher } from './lib/use-patcher';
 
 export const App = () => {
   const [rom, setRom] = useState<File | null>(null);
   const [patch, setPatch] = useState<File | null>(null);
   const [outputName, setOutputName] = useState('output.nds');
+  const [romState, setRomState] = useState<{
+    file: File;
+    identity: RomIdentity | null;
+    error: string;
+  } | null>(null);
+  const [remoteState, setRemoteState] = useState({ patchId: '', error: '' });
+  const catalog = usePatchCatalog();
   const engine = usePatcher(patch);
   const busy = engine.status === 'working';
   const select = (kind: 'rom' | 'patch', file: File): void => {
@@ -14,14 +24,58 @@ export const App = () => {
     engine.reset();
     if (kind === 'rom') {
       setRom(file);
+      setRomState({ file, identity: null, error: '' });
       setOutputName(`${file.name.replace(/\.nds$/i, '')}.patched.nds`);
-    } else setPatch(file);
+      void readRomIdentity(file).then(
+        (identity) =>
+          setRomState((state) => (state?.file === file ? { file, identity, error: '' } : state)),
+        (reason: unknown) =>
+          setRomState((state) =>
+            state?.file === file
+              ? {
+                  file,
+                  identity: null,
+                  error: reason instanceof Error ? reason.message : String(reason),
+                }
+              : state,
+          ),
+      );
+    } else {
+      setPatch(file);
+      setRemoteState({ patchId: '', error: '' });
+    }
+  };
+  const selectRemotePatch = async (entry: CatalogPatch): Promise<void> => {
+    if (!entry.downloadUrl || remoteState.patchId) return;
+    setRemoteState({ patchId: entry.patchId, error: '' });
+    try {
+      select('patch', await engine.download(entry));
+    } catch (reason) {
+      setRemoteState({
+        patchId: '',
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+      return;
+    }
+    setRemoteState({ patchId: '', error: '' });
   };
   const start = (): void => {
     if (!rom || !patch || busy || !outputName.trim()) return;
     engine.run(rom, patch, outputName);
   };
   const error = engine.status === 'error' ? engine.error : '';
+  const currentRom = romState?.file === rom ? romState : null;
+  const visiblePatches = currentRom?.identity
+    ? catalog.patches.filter((entry) => entry.gameCode === currentRom.identity?.gameCode)
+    : [];
+  const catalogEntry = engine.metadata?.id
+    ? catalog.patches.find((entry) => entry.patchId === engine.metadata?.id)
+    : undefined;
+  const versionComparison =
+    catalogEntry?.latestVersion && engine.metadata?.version && !engine.metadata.isBeta
+      ? compareVersions(engine.metadata.version, catalogEntry.latestVersion)
+      : null;
+  const updateAvailable = versionComparison !== null && versionComparison < 0;
   const metadataFields = (
     [
       ['author', '作者'],
@@ -114,59 +168,135 @@ export const App = () => {
           )}
         </div>
       ) : null}
-      {patch && (
-        <section
-          className="patch-info"
-          aria-label="补丁信息"
-          aria-live="polite"
-          aria-busy={engine.metadataLoading}
-        >
-          {!engine.ready ? (
-            <p>等候补丁引擎就绪…</p>
-          ) : engine.metadataLoading ? (
-            <p>正在读取补丁信息…</p>
-          ) : engine.metadataError ? (
-            <Alert variant="warning">无法读取补丁信息：{engine.metadataError}</Alert>
-          ) : metadataFields.length > 0 ? (
-            <div>
-              <h2>补丁信息：</h2>
-              <dl className="metadata">
-                {metadataFields.map(({ field, label, value }) => (
-                  <Fragment key={field}>
-                    <dt>{label}</dt>
-                    <dd>{value}</dd>
-                  </Fragment>
-                ))}
-              </dl>
-            </div>
-          ) : !engine.readme ? (
-            <p>补丁包未提供元数据或说明。</p>
-          ) : null}
-          {engine.readme && (
-            <div className="patch-readme">
-              {engine.readme.format === 'markdown' ? (
-                <div className="markdown-content">
-                  <Markdown
-                    skipHtml
-                    components={{
-                      a: ({ href, children }) => (
-                        <a href={href} target="_blank" rel="noopener noreferrer">
-                          {children}
-                        </a>
-                      ),
-                      img: ({ alt }) => <span>{alt ? `[图片：${alt}]` : '[图片]'}</span>,
-                    }}
-                  >
-                    {engine.readme.content.trimEnd()}
-                  </Markdown>
+      {patch &&
+        (!engine.ready ||
+          engine.metadataLoading ||
+          engine.metadataError ||
+          metadataFields.length > 0 ||
+          engine.readme ||
+          updateAvailable) && (
+          <section
+            className="patch-info"
+            aria-label="补丁信息"
+            aria-live="polite"
+            aria-busy={engine.metadataLoading}
+          >
+            {!engine.ready ? (
+              <p>等候补丁引擎就绪…</p>
+            ) : engine.metadataLoading ? (
+              <p>正在读取补丁信息…</p>
+            ) : engine.metadataError ? (
+              <Alert variant="warning">无法读取补丁信息：{engine.metadataError}</Alert>
+            ) : metadataFields.length > 0 ? (
+              <div>
+                <h2>补丁信息：</h2>
+                <dl className="metadata">
+                  {metadataFields.map(({ field, label, value }) => (
+                    <Fragment key={field}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
+            {updateAvailable && catalogEntry && engine.metadata?.version && (
+              <div className="version-status">
+                <Alert variant="warning">
+                  <div className="version-update">
+                    <span>发现新版本：{catalogEntry.latestVersion}</span>
+                    {catalogEntry.homepage && (
+                      <a
+                        className="version-update__action"
+                        href={catalogEntry.homepage}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        前往主页 <span aria-hidden="true">↗</span>
+                      </a>
+                    )}
+                  </div>
+                </Alert>
+              </div>
+            )}
+            {engine.readme && (
+              <div className="patch-readme">
+                {engine.readme.format === 'markdown' ? (
+                  <div className="markdown-content">
+                    <Markdown
+                      skipHtml
+                      components={{
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer">
+                            {children}
+                          </a>
+                        ),
+                        img: ({ alt }) => <span>{alt ? `[图片：${alt}]` : '[图片]'}</span>,
+                      }}
+                    >
+                      {engine.readme.content.trimEnd()}
+                    </Markdown>
+                  </div>
+                ) : (
+                  <pre>{engine.readme.content.trimEnd()}</pre>
+                )}
+                <blockquote className="content-notice">
+                  补丁信息和说明内容来自所选补丁包，并非由当前网站提供或认可，请注意辨别。
+                </blockquote>
+              </div>
+            )}
+          </section>
+        )}
+      {currentRom?.identity && !catalog.loading && !catalog.error && visiblePatches.length > 0 && (
+        <section className="catalog" aria-label="当前 ROM 支持的补丁">
+          <h2>当前 ROM 支持的补丁</h2>
+          <div className="patch-list">
+            {visiblePatches.map((entry) => (
+              <article className="patch-card" key={entry.patchId}>
+                <div className="patch-card__body">
+                  <h3>{entry.gameName}</h3>
+                  <ul className="patch-card__info">
+                    {entry.author && <li>作者：{entry.author}</li>}
+                    {entry.latestVersion && <li>版本：{entry.latestVersion}</li>}
+                  </ul>
                 </div>
-              ) : (
-                <pre>{engine.readme.content.trimEnd()}</pre>
-              )}
-              <blockquote className="content-notice">
-                补丁信息和说明内容来自所选补丁包，并非由当前网站提供或认可，请注意辨别。
-              </blockquote>
-            </div>
+                <div className="patch-card__actions">
+                  {entry.homepage && (
+                    <a
+                      className="button"
+                      href={entry.homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      主页
+                    </a>
+                  )}
+                  {entry.downloadUrl && (
+                    <>
+                      <a
+                        className="button"
+                        href={entry.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        下载
+                      </a>
+                      <Button
+                        variant="primary"
+                        loading={remoteState.patchId === entry.patchId}
+                        disabled={!!remoteState.patchId || busy || !engine.ready}
+                        onClick={() => void selectRemotePatch(entry)}
+                      >
+                        在线载入
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+          {remoteState.error && (
+            <Alert variant="warning">无法在线载入补丁：{remoteState.error}</Alert>
           )}
         </section>
       )}

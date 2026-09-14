@@ -3,7 +3,7 @@ allowBuilds:
   nitro-patcher: false
 minimumReleaseAgeExclude:
   # This exact release was published and verified for this frontend.
-  - nitro-patcher@0.2.0
+  - nitro-patcher@0.2.1
   - '@types/node@22.20.2'
   - '@types/react-dom@19.3.0'
   - '@types/react@19.3.0'

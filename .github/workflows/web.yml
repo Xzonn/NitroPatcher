@@ -60,7 +60,8 @@ jobs:
         run: |
           test -s dist/index.html
           test -f dist/.nojekyll
-          rsync -a --delete --exclude=.git dist/ site/
+          rsync -ac --delete --exclude=.git dist/ site/
+          cmp dist/index.html site/index.html
           cd site
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

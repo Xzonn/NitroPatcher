@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PatchInfo } from 'nitro-patcher/browser';
+import type { CreatePatchOptions, PatchInfo } from 'nitro-patcher/browser';
 import type { PatchRequest, WorkerReply } from './protocol';
 import type { CatalogPatch } from './catalog';
-interface Result {
+type Result = {
   url: string;
   name: string;
-  inputMd5: string;
-  outputMd5: string;
-  mismatch: boolean;
-}
+} & (
+  | { type: 'patch'; inputMd5: string; outputMd5: string; mismatch: boolean }
+  | { type: 'create'; changedFiles: number; warnings: string[] }
+);
 export const usePatcher = (patch: File | null) => {
   const worker = useRef<Worker | null>(null);
   const requestId = useRef(0);
@@ -60,7 +60,7 @@ export const usePatcher = (patch: File | null) => {
         setError(data.message);
         setStatus('error');
       }
-      if (data.type === 'done') {
+      if (data.type === 'done' || data.type === 'created') {
         const url = URL.createObjectURL(
           new Blob([data.result.buffer], { type: 'application/octet-stream' }),
         );
@@ -68,9 +68,18 @@ export const usePatcher = (patch: File | null) => {
         setResult({
           url,
           name: outputName.current,
-          inputMd5: data.result.inputMd5,
-          outputMd5: data.result.outputMd5,
-          mismatch: data.result.returnValue === 'MD5_MISMATCH',
+          ...(data.type === 'done'
+            ? {
+                type: 'patch',
+                inputMd5: data.result.inputMd5,
+                outputMd5: data.result.outputMd5,
+                mismatch: data.result.returnValue === 'MD5_MISMATCH',
+              }
+            : {
+                type: 'create',
+                changedFiles: data.result.changedFiles,
+                warnings: data.result.warnings,
+              }),
         });
         setStatus('success');
       }
@@ -134,6 +143,19 @@ export const usePatcher = (patch: File | null) => {
       } satisfies PatchRequest);
     });
   };
+  const create = (rom: File, modified: File, name: string, options: CreatePatchOptions): void => {
+    if (!worker.current || !ready || status === 'working') return;
+    reset();
+    setStatus('working');
+    outputName.current = name;
+    worker.current.postMessage({
+      type: 'create',
+      id: ++requestId.current,
+      rom,
+      modified,
+      options,
+    } satisfies PatchRequest);
+  };
   const currentMetadata = metadataState?.file === patch ? metadataState : null;
   return {
     ready,
@@ -142,6 +164,7 @@ export const usePatcher = (patch: File | null) => {
     result,
     reset,
     run,
+    create,
     download,
     metadata: currentMetadata?.info?.metadata ?? null,
     readme: currentMetadata?.info?.readme ?? null,

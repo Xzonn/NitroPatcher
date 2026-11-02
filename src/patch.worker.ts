@@ -1,4 +1,4 @@
-import { extractZipEntry, patchBuffer, readPatchInfo } from 'nitro-patcher/browser';
+import { createPatch, extractZipEntry, patchBuffer, readPatchInfo } from 'nitro-patcher/browser';
 import type { PatchRequest, WorkerReply } from './lib/protocol';
 
 const MAX_DOWNLOAD_SIZE = 256 * 1024 * 1024;
@@ -62,6 +62,13 @@ const reply = (message: WorkerReply, transfer: Transferable[] = []): void =>
 self.onmessage = async (event: MessageEvent<PatchRequest>) => {
   const { id } = event.data;
   try {
+    if (event.data.type === 'create') {
+      const { rom, modified, options } = event.data;
+      const [source, target] = await Promise.all([rom.arrayBuffer(), modified.arrayBuffer()]);
+      const result = await createPatch(new Uint8Array(source), new Uint8Array(target), options);
+      reply({ type: 'created', id, result }, [result.buffer.buffer]);
+      return;
+    }
     if (event.data.type === 'download') {
       const result = await downloadPatch(
         event.data.url,

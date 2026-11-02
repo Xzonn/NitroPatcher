@@ -1,5 +1,17 @@
-import type { BrowserPatchResult, PatchInfo } from 'nitro-patcher/browser';
+import type {
+  BrowserPatchResult,
+  CreatePatchOptions,
+  CreatePatchResult,
+  PatchInfo,
+} from 'nitro-patcher/browser';
 export type PatchRequest =
+  | {
+      type: 'create';
+      id: number;
+      rom: File;
+      modified: File;
+      options: CreatePatchOptions;
+    }
   | {
       type: 'patch';
       id: number;
@@ -15,6 +27,7 @@ export type PatchRequest =
       expectedVersion: string;
     };
 export type WorkerReply =
+  | { type: 'created'; id: number; result: CreatePatchResult }
   | { type: 'ready' }
   | { type: 'metadata'; id: number; info: PatchInfo }
   | { type: 'metadata-error'; id: number; message: string }

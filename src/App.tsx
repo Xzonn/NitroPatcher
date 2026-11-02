@@ -7,7 +7,19 @@ import { usePatchCatalog } from './lib/use-catalog';
 import { usePatcher } from './lib/use-patcher';
 
 export const App = () => {
+  const [mode, setMode] = useState<'patch' | 'create'>('patch');
   const [rom, setRom] = useState<File | null>(null);
+  const [modified, setModified] = useState<File | null>(null);
+  const [patchName, setPatchName] = useState('patch.xzp');
+  const [metadata, setMetadata] = useState({
+    id: '',
+    name: '',
+    author: '',
+    version: '',
+    homepage: '',
+    isBeta: false,
+  });
+  const [readme, setReadme] = useState('');
   const [patch, setPatch] = useState<File | null>(null);
   const [outputName, setOutputName] = useState('output.nds');
   const [romState, setRomState] = useState<{
@@ -19,7 +31,7 @@ export const App = () => {
   const catalog = usePatchCatalog();
   const engine = usePatcher(patch);
   const busy = engine.status === 'working';
-  const select = (kind: 'rom' | 'patch', file: File): void => {
+  const select = (kind: 'rom' | 'patch' | 'modified', file: File): void => {
     if (busy) return;
     engine.reset();
     if (kind === 'rom') {
@@ -40,6 +52,9 @@ export const App = () => {
               : state,
           ),
       );
+    } else if (kind === 'modified') {
+      setModified(file);
+      setPatchName(`${file.name.replace(/\.nds$/i, '')}.xzp`);
     } else {
       setPatch(file);
       setRemoteState({ patchId: '', error: '' });
@@ -60,6 +75,14 @@ export const App = () => {
     setRemoteState({ patchId: '', error: '' });
   };
   const start = (): void => {
+    if (mode === 'create') {
+      if (!rom || !modified || busy || !patchName.trim()) return;
+      engine.create(rom, modified, patchName, {
+        metadata: Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== '')),
+        readme,
+      });
+      return;
+    }
     if (!rom || !patch || busy || !outputName.trim()) return;
     engine.run(rom, patch, outputName);
   };
@@ -94,6 +117,27 @@ export const App = () => {
       <header className="page-header">
         <h1>NDS ROM 补丁工具</h1>
       </header>
+      <div className="mode-switch" role="group" aria-label="操作模式">
+        {(
+          [
+            ['patch', '应用补丁'],
+            ['create', '创建补丁'],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            variant={mode === value ? 'primary' : 'default'}
+            aria-pressed={mode === value}
+            disabled={busy || !!remoteState.patchId}
+            onClick={() => {
+              setMode(value);
+              engine.reset();
+            }}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -106,41 +150,118 @@ export const App = () => {
             <FilePicker
               id="rom-file"
               label="原始 ROM"
-              accept=".nds"
+              {...(mode === 'patch' ? { accept: '.nds' } : {})}
               file={rom}
               disabled={busy}
               onSelect={(file) => select('rom', file)}
             />
           </FormField>
-          <FormField label="补丁包" htmlFor="patch-file">
-            <FilePicker
-              id="patch-file"
-              label="补丁包"
-              accept=".xzp,.zip"
-              file={patch}
-              disabled={busy}
-              onSelect={(file) => select('patch', file)}
-            />
-          </FormField>
-          <FormField label="输出 ROM" htmlFor="output-name">
-            <Input
-              id="output-name"
-              value={outputName}
-              onChange={(event) => {
-                setOutputName(event.target.value);
-                engine.reset();
-              }}
-              aria-label="输出 ROM 文件名"
-            />
-          </FormField>
+          {mode === 'create' ? (
+            <>
+              <FormField label="修改后的 ROM" htmlFor="modified-file">
+                <FilePicker
+                  id="modified-file"
+                  label="修改后的 ROM"
+                  file={modified}
+                  disabled={busy}
+                  onSelect={(file) => select('modified', file)}
+                />
+              </FormField>
+              <FormField label="输出补丁" htmlFor="patch-name">
+                <Input
+                  id="patch-name"
+                  value={patchName}
+                  onChange={(event) => {
+                    setPatchName(event.target.value);
+                    engine.reset();
+                  }}
+                />
+              </FormField>
+              <details className="creation-info">
+                <summary>补丁信息（可选）</summary>
+                {(
+                  [
+                    ['name', '名称'],
+                    ['author', '作者'],
+                    ['version', '版本'],
+                    ['homepage', '主页'],
+                    ['id', '补丁 ID'],
+                  ] as const
+                ).map(([field, label]) => (
+                  <FormField key={field} label={label} htmlFor={`create-${field}`}>
+                    <Input
+                      id={`create-${field}`}
+                      value={metadata[field]}
+                      onChange={(event) => {
+                        setMetadata((state) => ({ ...state, [field]: event.target.value }));
+                        engine.reset();
+                      }}
+                    />
+                  </FormField>
+                ))}
+                <FormField label="测试版" htmlFor="create-beta">
+                  <input
+                    id="create-beta"
+                    type="checkbox"
+                    checked={metadata.isBeta}
+                    onChange={(event) => {
+                      setMetadata((state) => ({ ...state, isBeta: event.target.checked }));
+                      engine.reset();
+                    }}
+                  />
+                </FormField>
+                <FormField label="补丁说明" htmlFor="create-readme">
+                  <textarea
+                    id="create-readme"
+                    className="input"
+                    rows={6}
+                    placeholder="支持 Markdown"
+                    value={readme}
+                    onChange={(event) => {
+                      setReadme(event.target.value);
+                      engine.reset();
+                    }}
+                  />
+                </FormField>
+              </details>
+            </>
+          ) : (
+            <>
+              <FormField label="补丁包" htmlFor="patch-file">
+                <FilePicker
+                  id="patch-file"
+                  label="补丁包"
+                  accept=".xzp,.zip"
+                  file={patch}
+                  disabled={busy}
+                  onSelect={(file) => select('patch', file)}
+                />
+              </FormField>
+              <FormField label="输出 ROM" htmlFor="output-name">
+                <Input
+                  id="output-name"
+                  value={outputName}
+                  onChange={(event) => {
+                    setOutputName(event.target.value);
+                    engine.reset();
+                  }}
+                  aria-label="输出 ROM 文件名"
+                />
+              </FormField>
+            </>
+          )}
           <div className="form-actions">
             <Button
               variant="primary"
               type="submit"
               loading={busy}
-              disabled={!rom || !patch || !engine.ready || !outputName.trim()}
+              disabled={
+                !rom ||
+                !engine.ready ||
+                (mode === 'create' ? !modified || !patchName.trim() : !patch || !outputName.trim())
+              }
             >
-              开始
+              {mode === 'create' ? '创建补丁' : '开始'}
             </Button>
           </div>
         </fieldset>
@@ -148,7 +269,22 @@ export const App = () => {
       {error || engine.result ? (
         <div className="results">
           {error && <Alert variant="error">错误：{error}</Alert>}
-          {engine.result && (
+          {engine.result?.type === 'create' && (
+            <>
+              <Alert variant="success">
+                已创建补丁，包含 {engine.result.changedFiles} 项文件差分。
+              </Alert>
+              {engine.result.warnings.map((warning, index) => (
+                <Alert key={`${index}:${warning}`} variant="warning">
+                  {warning}
+                </Alert>
+              ))}
+              <a className="button" href={engine.result.url} download={engine.result.name}>
+                下载 XZP 补丁
+              </a>
+            </>
+          )}
+          {engine.result?.type === 'patch' && (
             <>
               <Alert variant={engine.result.mismatch ? 'warning' : 'success'}>
                 {engine.result.mismatch
@@ -168,7 +304,8 @@ export const App = () => {
           )}
         </div>
       ) : null}
-      {patch &&
+      {mode === 'patch' &&
+        patch &&
         (!engine.ready ||
           engine.metadataLoading ||
           engine.metadataError ||
@@ -247,59 +384,63 @@ export const App = () => {
             )}
           </section>
         )}
-      {currentRom?.identity && !catalog.loading && !catalog.error && visiblePatches.length > 0 && (
-        <section className="catalog" aria-label="当前 ROM 支持的补丁">
-          <h2>当前 ROM 支持的补丁</h2>
-          <div className="patch-list">
-            {visiblePatches.map((entry) => (
-              <article className="patch-card" key={entry.patchId}>
-                <div className="patch-card__body">
-                  <h3>{entry.gameName}</h3>
-                  <ul className="patch-card__info">
-                    {entry.author && <li>作者：{entry.author}</li>}
-                    {entry.latestVersion && <li>版本：{entry.latestVersion}</li>}
-                  </ul>
-                </div>
-                <div className="patch-card__actions">
-                  {entry.homepage && (
-                    <a
-                      className="button"
-                      href={entry.homepage}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      主页
-                    </a>
-                  )}
-                  {entry.downloadUrl && (
-                    <>
+      {mode === 'patch' &&
+        currentRom?.identity &&
+        !catalog.loading &&
+        !catalog.error &&
+        visiblePatches.length > 0 && (
+          <section className="catalog" aria-label="当前 ROM 支持的补丁">
+            <h2>当前 ROM 支持的补丁</h2>
+            <div className="patch-list">
+              {visiblePatches.map((entry) => (
+                <article className="patch-card" key={entry.patchId}>
+                  <div className="patch-card__body">
+                    <h3>{entry.gameName}</h3>
+                    <ul className="patch-card__info">
+                      {entry.author && <li>作者：{entry.author}</li>}
+                      {entry.latestVersion && <li>版本：{entry.latestVersion}</li>}
+                    </ul>
+                  </div>
+                  <div className="patch-card__actions">
+                    {entry.homepage && (
                       <a
                         className="button"
-                        href={entry.downloadUrl}
+                        href={entry.homepage}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        下载
+                        主页
                       </a>
-                      <Button
-                        variant="primary"
-                        loading={remoteState.patchId === entry.patchId}
-                        disabled={!!remoteState.patchId || busy || !engine.ready}
-                        onClick={() => void selectRemotePatch(entry)}
-                      >
-                        在线载入
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-          {remoteState.error && (
-            <Alert variant="warning">无法在线载入补丁：{remoteState.error}</Alert>
-          )}
-        </section>
-      )}
+                    )}
+                    {entry.downloadUrl && (
+                      <>
+                        <a
+                          className="button"
+                          href={entry.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          下载
+                        </a>
+                        <Button
+                          variant="primary"
+                          loading={remoteState.patchId === entry.patchId}
+                          disabled={!!remoteState.patchId || busy || !engine.ready}
+                          onClick={() => void selectRemotePatch(entry)}
+                        >
+                          在线载入
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+            {remoteState.error && (
+              <Alert variant="warning">无法在线载入补丁：{remoteState.error}</Alert>
+            )}
+          </section>
+        )}
       <footer className="page-footer">
         <span>网站设计：Xzonn</span>
         <span role="status">{busy ? '正在处理…' : engine.ready ? '就绪' : '正在准备…'}</span>

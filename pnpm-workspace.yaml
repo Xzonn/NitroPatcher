@@ -3,7 +3,7 @@ allowBuilds:
   nitro-patcher: false
 minimumReleaseAgeExclude:
   # This exact release was published and verified for this frontend.
-  - nitro-patcher@1.1.1
+  - nitro-patcher@1.2.0
   - '@xzonn/xdelta3-wasm@1.1.2'
   - '@types/node@22.20.2'
   - '@types/react-dom@19.3.0'
